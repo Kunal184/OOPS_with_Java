@@ -8,37 +8,39 @@ import com.course.exception.DuplicateEnrollmentException;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CourseService {
-    private List<Course> courses;
+    private Course[] courses;
+    private int courseCount;
     private final String FILE_NAME = "courses.txt";
 
     public CourseService() {
-        courses = new ArrayList<>();
+        courses = new Course[100];
+        courseCount = 0;
         loadFromFile();
     }
 
     public void addCourse(Course c) {
-        for (Course course : courses) {
-            if (course.getCourseId() == c.getCourseId()) {
+        for (int i = 0; i < courseCount; i++) {
+            if (courses[i].getCourseId() == c.getCourseId()) {
                 return;
             }
         }
-        courses.add(c);
-        saveToFile();
+        if (courseCount < courses.length) {
+            courses[courseCount] = c;
+            courseCount++;
+            saveToFile();
+        }
     }
 
     public void enrollStudent(int courseId, Student s) throws CourseNotFoundException, CourseFullException, DuplicateEnrollmentException {
         Course foundCourse = null;
-        for (Course c : courses) {
-            if (c.getCourseId() == courseId) {
-                foundCourse = c;
+        for (int i = 0; i < courseCount; i++) {
+            if (courses[i].getCourseId() == courseId) {
+                foundCourse = courses[i];
                 break;
             }
         }
@@ -51,44 +53,43 @@ public class CourseService {
             throw new CourseFullException("Course " + foundCourse.getCourseName() + " is already full.");
         }
 
-        for (Student enrolled : foundCourse.getStudentsList()) {
-            if (enrolled.getStudentId() == s.getStudentId()) {
+        for (int i = 0; i < foundCourse.getEnrolledStudents(); i++) {
+            if (foundCourse.getStudents()[i].getStudentId() == s.getStudentId()) {
                 throw new DuplicateEnrollmentException("Student " + s.getStudentName() + " is already enrolled.");
             }
         }
 
-        foundCourse.getStudentsList().add(s);
+        foundCourse.getStudents()[foundCourse.getEnrolledStudents()] = s;
         foundCourse.setEnrolledStudents(foundCourse.getEnrolledStudents() + 1);
         saveToFile();
     }
 
     public void viewCourses() {
-        for (Course c : courses) {
-            c.display();
+        for (int i = 0; i < courseCount; i++) {
+            courses[i].display();
         }
     }
 
     private void saveToFile() {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME))) {
-            for (Course c : courses) {
-                bw.write("COURSE," + c.getCourseId() + "," + c.getCourseName() + "," + c.getMaxSeats() + "," + c.getEnrolledStudents());
-                bw.newLine();
-                for (Student s : c.getStudentsList()) {
-                    bw.write("STUDENT," + c.getCourseId() + "," + s.getStudentId() + "," + s.getStudentName());
-                    bw.newLine();
+        try {
+            BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME));
+            for (int i = 0; i < courseCount; i++) {
+                Course c = courses[i];
+                bw.write("COURSE," + c.getCourseId() + "," + c.getCourseName() + "," + c.getMaxSeats() + "," + c.getEnrolledStudents() + "\n");
+                for (int j = 0; j < c.getEnrolledStudents(); j++) {
+                    Student s = c.getStudents()[j];
+                    bw.write("STUDENT," + c.getCourseId() + "," + s.getStudentId() + "," + s.getStudentName() + "\n");
                 }
             }
+            bw.close();
         } catch (IOException e) {
             System.out.println("Error saving to file.");
         }
     }
 
     private void loadFromFile() {
-        File file = new File(FILE_NAME);
-        if (!file.exists()) {
-            return;
-        }
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(FILE_NAME));
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
@@ -99,22 +100,32 @@ public class CourseService {
                     int enrolled = Integer.parseInt(parts[4]);
                     Course c = new Course(id, name, maxSeats);
                     c.setEnrolledStudents(enrolled);
-                    courses.add(c);
+                    
+                    courses[courseCount] = c;
+                    courseCount++;
                 } else if (parts[0].equals("STUDENT")) {
                     int courseId = Integer.parseInt(parts[1]);
                     int studentId = Integer.parseInt(parts[2]);
                     String studentName = parts[3];
                     Student s = new Student(studentId, studentName);
-                    for (Course c : courses) {
-                        if (c.getCourseId() == courseId) {
-                            c.getStudentsList().add(s);
+                    
+                    for (int i = 0; i < courseCount; i++) {
+                        if (courses[i].getCourseId() == courseId) {
+                            Course c = courses[i];
+                            int idx = 0;
+                            while (idx < c.getMaxSeats() && c.getStudents()[idx] != null) {
+                                idx++;
+                            }
+                            if (idx < c.getMaxSeats()) {
+                                c.getStudents()[idx] = s;
+                            }
                             break;
                         }
                     }
                 }
             }
-        } catch (IOException e) {
-            System.out.println("Error reading from file.");
+            br.close();
+        } catch (Exception e) {
         }
     }
 }

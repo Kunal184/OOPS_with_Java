@@ -1,21 +1,18 @@
 package com.course.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Course {
     private int courseId;
     private String courseName;
     private int maxSeats;
     private int enrolledStudents;
-    private List<Student> studentsList;
+    private Student[] students;
 
     public Course(int courseId, String courseName, int maxSeats) {
         this.courseId = courseId;
         this.courseName = courseName;
         this.maxSeats = maxSeats;
         this.enrolledStudents = 0;
-        this.studentsList = new ArrayList<>();
+        this.students = new Student[maxSeats];
     }
 
     public int getCourseId() {
@@ -40,6 +37,11 @@ public class Course {
 
     public void setMaxSeats(int maxSeats) {
         this.maxSeats = maxSeats;
+        Student[] newStudents = new Student[maxSeats];
+        for (int i = 0; i < enrolledStudents && i < maxSeats; i++) {
+            newStudents[i] = students[i];
+        }
+        students = newStudents;
     }
 
     public int getEnrolledStudents() {
@@ -50,18 +52,14 @@ public class Course {
         this.enrolledStudents = enrolledStudents;
     }
 
-    public List<Student> getStudentsList() {
-        return studentsList;
-    }
-
-    public void setStudentsList(List<Student> studentsList) {
-        this.studentsList = studentsList;
+    public Student[] getStudents() {
+        return students;
     }
 
     public void display() {
         System.out.println("Course ID: " + courseId + " | Name: " + courseName + " | Capacity: " + enrolledStudents + "/" + maxSeats);
-        for (Student s : studentsList) {
-            s.display();
+        for (int i = 0; i < enrolledStudents; i++) {
+            students[i].display();
         }
     }
 }
